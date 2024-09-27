@@ -3,3 +3,4 @@
 -I.
 -I./lib
 -g
+-DDEBUG

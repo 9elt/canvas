@@ -45,7 +45,9 @@ void DrawPath(Path path, Point position, Bounds screen_bounds) {
     };
 
     if (bounds_intersect(path_bounds, screen_bounds)) {
+#ifdef DEBUG
         DrawBounds(path_bounds, BLACK);
+#endif
 
         Vector2 points[path.length];
 
@@ -262,10 +264,12 @@ int main(void) {
 
         DrawCurrentPath(current_path, state.position);
 
+#ifdef DEBUG
         DrawText(TextFormat("fps: %d", state.fps), 10, 10, 20, BLACK);
         DrawText(TextFormat("paths: %d", canvas.length), 10, 30, 20, BLACK);
         DrawText(TextFormat("points: %d", canvas.point_count), 10, 50, 20,
                  BLACK);
+#endif
 
         EndDrawing();
     }
