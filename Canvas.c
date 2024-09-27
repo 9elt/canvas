@@ -70,7 +70,9 @@ void current_path_push(CurrentPath *curr_path, Point point) {
     if (curr_path->length > 0) {
         Point last = curr_path->points[curr_path->length - 1];
 
-        if (point_distance(last, point) < 4) {
+        int target_distance = curr_path->length > 4 ? 4 : 1;
+
+        if (point_distance(last, point) < target_distance) {
             return;
         }
     }
