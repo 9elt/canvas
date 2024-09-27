@@ -23,11 +23,6 @@ bool bounds_intersect(Bounds a, Bounds b) {
     return a.l < b.r && a.r > b.l && a.t < b.b && a.b > b.t;
 }
 
-Bounds bounds_translate(Bounds bounds, Point offset) {
-    return (Bounds){bounds.l + offset.x, bounds.t + offset.y,
-                    bounds.r + offset.x, bounds.b + offset.y};
-}
-
 void DrawBounds(Bounds bounds, Color color) {
     DrawLine(bounds.l, bounds.t, bounds.r, bounds.t, color);
     DrawLine(bounds.r, bounds.t, bounds.r, bounds.b, color);
