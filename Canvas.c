@@ -300,6 +300,36 @@ void canvas_push(Canvas *canvas, CurrentPath *curr_path) {
 #endif
 }
 
+void canvas_clear(Canvas *canvas) {
+    if (canvas->length > 0) {
+        canvas->length = 0;
+    }
+}
+
+void canvas_move_last(Canvas *from, Canvas *to) {
+    if (from->length == 0) {
+        return;
+    }
+
+    Path path = from->paths[from->length - 1];
+
+    if (to->length == to->capacity) {
+        to->capacity *= 2;
+        to->paths = realloc(to->paths, sizeof(Path) * to->capacity);
+    }
+
+    to->paths[to->length] = path;
+    to->length++;
+#ifdef DEBUG
+    to->point_count += path.length;
+#endif
+
+    from->length--;
+#ifdef DEBUG
+    from->point_count -= path.length;
+#endif
+}
+
 const float INPUT_RATE = 1.f / 30.f;
 
 typedef struct State {
@@ -316,6 +346,8 @@ typedef struct State {
     bool is_drawing_released;
     bool is_dragging;
     bool is_dragging_released;
+    bool history_back;
+    bool history_forward;
 } State;
 
 int main(int argc, char *argv[]) {
@@ -324,6 +356,13 @@ int main(int argc, char *argv[]) {
     config_load(argc, argv);
 
     Canvas canvas = {
+        malloc(sizeof(Path) * 4),
+        4,
+        0,
+        0,
+    };
+
+    Canvas clipboard = {
         malloc(sizeof(Path) * 4),
         4,
         0,
@@ -353,6 +392,12 @@ int main(int argc, char *argv[]) {
         state.frame_time = GetFrameTime();
         state.input_time += state.frame_time;
         state.is_input_frame = state.input_time > INPUT_RATE;
+        state.history_back = IsKeyPressed(KEY_Z) &&
+                             IsKeyDown(KEY_LEFT_CONTROL) &&
+                             !IsKeyDown(KEY_LEFT_SHIFT);
+        state.history_forward = IsKeyPressed(KEY_Z) &&
+                                IsKeyDown(KEY_LEFT_CONTROL) &&
+                                IsKeyDown(KEY_LEFT_SHIFT);
 
         if (state.is_input_frame) {
             state.input_time = 0;
@@ -374,6 +419,8 @@ int main(int argc, char *argv[]) {
 
         // UPDATE
         if (state.is_drawing) {
+            canvas_clear(&clipboard);
+
             if (state.is_input_frame) {
                 current_path_push(&current_path,
                                   (Point){state.mouse.x - state.position.x,
@@ -386,6 +433,12 @@ int main(int argc, char *argv[]) {
         if (state.is_dragging) {
             state.position.x += state.mouse.x - state.mouse_prev.x;
             state.position.y += state.mouse.y - state.mouse_prev.y;
+        }
+
+        if (state.history_back) {
+            canvas_move_last(&canvas, &clipboard);
+        } else if (state.history_forward) {
+            canvas_move_last(&clipboard, &canvas);
         }
 
         // RENDER
