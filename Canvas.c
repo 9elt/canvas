@@ -300,6 +300,9 @@ void canvas_push(Canvas *canvas, CurrentPath *curr_path) {
 
 void canvas_clear(Canvas *canvas) {
     if (canvas->length > 0) {
+        for (int i = 0; i < canvas->length; i++) {
+            free(canvas->paths[i].points);
+        }
         canvas->length = 0;
     }
 }
