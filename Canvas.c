@@ -2,6 +2,52 @@
 #include <raylib.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+#define DARK_BACKGROUND                                                        \
+    (Color) { 42, 42, 42, 255 }
+
+#define DARK_FOREGROUND                                                        \
+    (Color) { 219, 219, 219, 128 }
+
+#define DARK_DEBUG                                                             \
+    (Color) { 219, 219, 219, 16 }
+
+#define LIGHT_BACKGROUND                                                       \
+    (Color) { 232, 232, 232, 255 }
+
+#define LIGHT_FOREGROUND                                                       \
+    (Color) { 51, 51, 51, 128 }
+
+#define LIGHT_DEBUG                                                            \
+    (Color) { 51, 51, 51, 16 }
+
+typedef struct Config {
+    Color background;
+    Color foreground;
+    Color debug_color;
+} Config;
+
+Config config;
+
+void config_load(int argc, char *argv[]) {
+    config = (Config){DARK_BACKGROUND, DARK_FOREGROUND, DARK_DEBUG};
+
+    for (int i = 0; i < argc; i++) {
+        char *arg = argv[i];
+
+        if (strcmp(arg, "--light") == 0 || strcmp(arg, "-l") == 0) {
+            config.background = LIGHT_BACKGROUND;
+            config.foreground = LIGHT_FOREGROUND;
+            config.debug_color = LIGHT_DEBUG;
+        }
+    }
+};
+
+void DrawDebugText(const char *text, int value, int y) {
+    DrawText(TextFormat(text, value), 10, (y * 20) + 10, 20,
+             config.debug_color);
+}
 
 typedef struct Point {
     int x;
@@ -139,9 +185,9 @@ void DrawPath(Path path, Point position, Bounds screen_bounds) {
 
     if (bounds_intersect(path_bounds, screen_bounds)) {
 #ifdef DEBUG
-        DrawBounds(path_bounds, LIGHTGRAY);
+        DrawBounds(path_bounds, config.debug_color);
 #endif
-        DrawPathSplineBasis(path, position, 1.25, BLACK);
+        DrawPathSplineBasis(path, position, 1.25, config.foreground);
     }
 }
 
@@ -222,7 +268,7 @@ void DrawCurrentPath(CurrentPath current_path, Point position) {
             };
         }
 
-        DrawSplineBasis(points, current_path.length, 1.25, BLACK);
+        DrawSplineBasis(points, current_path.length, 1.25, config.foreground);
     }
 }
 
@@ -230,7 +276,9 @@ typedef struct Canvas {
     Path *paths;
     int capacity;
     int length;
+#ifdef DEBUG
     int point_count;
+#endif
 } Canvas;
 
 void canvas_push(Canvas *canvas, CurrentPath *curr_path) {
@@ -246,8 +294,10 @@ void canvas_push(Canvas *canvas, CurrentPath *curr_path) {
     Path path = current_path_finalize(curr_path);
 
     canvas->paths[canvas->length] = path;
-    canvas->point_count += path.length;
     canvas->length++;
+#ifdef DEBUG
+    canvas->point_count += path.length;
+#endif
 }
 
 const float INPUT_RATE = 1.f / 30.f;
@@ -268,8 +318,10 @@ typedef struct State {
     bool is_dragging_released;
 } State;
 
-int main(void) {
+int main(int argc, char *argv[]) {
     printf("Drawing!\n");
+
+    config_load(argc, argv);
 
     Canvas canvas = {
         malloc(sizeof(Path) * 4),
@@ -339,7 +391,7 @@ int main(void) {
         // RENDER
         BeginDrawing();
 
-        ClearBackground(RAYWHITE);
+        ClearBackground(config.background);
 
         for (int i = 0; i < canvas.length; i++) {
             DrawPath(canvas.paths[i], state.position, state.screen_bounds);
@@ -348,10 +400,9 @@ int main(void) {
         DrawCurrentPath(current_path, state.position);
 
 #ifdef DEBUG
-        DrawText(TextFormat("fps: %d", state.fps), 10, 10, 20, BLACK);
-        DrawText(TextFormat("paths: %d", canvas.length), 10, 30, 20, BLACK);
-        DrawText(TextFormat("points: %d", canvas.point_count), 10, 50, 20,
-                 BLACK);
+        DrawDebugText("fps: %d", state.fps, 0);
+        DrawDebugText("paths: %d", canvas.length, 1);
+        DrawDebugText("points: %d", canvas.point_count, 2);
 #endif
 
         EndDrawing();
