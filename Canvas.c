@@ -37,9 +37,7 @@ void config_load(int argc, char *argv[]) {
         char *arg = argv[i];
 
         if (strcmp(arg, "--light") == 0 || strcmp(arg, "-l") == 0) {
-            config.background = LIGHT_BACKGROUND;
-            config.foreground = LIGHT_FOREGROUND;
-            config.debug_color = LIGHT_DEBUG;
+            config = (Config){LIGHT_BACKGROUND, LIGHT_FOREGROUND, LIGHT_DEBUG};
         }
     }
 };
