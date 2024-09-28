@@ -7,7 +7,7 @@ LIBS=-lraylib -lm
 CC=gcc
 OPT=-O0
 
-DEP_FLAGS=-MP -MD -DDEBUG
+DEP_FLAGS=-MP -MD
 CFLAGS=-Wall -Wextra -g $(INCLUDES) $(OPT) $(DEP_FLAGS)
 
 CFILES=$(foreach DIR,$(CODEDIRS),$(wildcard $(DIR)/*.c))

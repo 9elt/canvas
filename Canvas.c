@@ -274,9 +274,7 @@ typedef struct Canvas {
     Path *paths;
     int capacity;
     int length;
-#ifdef DEBUG
     int point_count;
-#endif
 } Canvas;
 
 void canvas_push(Canvas *canvas, CurrentPath *curr_path) {
@@ -293,9 +291,7 @@ void canvas_push(Canvas *canvas, CurrentPath *curr_path) {
 
     canvas->paths[canvas->length] = path;
     canvas->length++;
-#ifdef DEBUG
     canvas->point_count += path.length;
-#endif
 }
 
 void canvas_clear(Canvas *canvas) {
@@ -321,14 +317,143 @@ void canvas_move_last(Canvas *from, Canvas *to) {
 
     to->paths[to->length] = path;
     to->length++;
-#ifdef DEBUG
     to->point_count += path.length;
-#endif
 
     from->length--;
-#ifdef DEBUG
     from->point_count -= path.length;
+}
+
+char const SER_VERSION = 1;
+
+void canvas_save(Canvas *canvas, char *filename) {
+    /*
+        version
+        number of paths
+
+        path length
+        ...points
+
+        path length
+        ...points
+
+        ...
+    */
+    int buffer_size =
+        // version
+        sizeof(char) +
+        // number of paths
+        sizeof(int) +
+        // paths lengths
+        (sizeof(int) * canvas->length) +
+        // paths points
+        (sizeof(Point) * canvas->point_count);
+
+#ifdef DEBUG
+    printf("-- saving canvas --\n");
+    printf("%d paths \n", canvas->length);
+    printf("%d points \n", canvas->point_count);
 #endif
+
+    void *buffer = malloc(buffer_size);
+    int o = 0;
+
+    memcpy(buffer + o, &SER_VERSION, sizeof(char));
+    o += sizeof(char);
+
+    memcpy(buffer + o, &canvas->length, sizeof(int));
+    o += sizeof(int);
+
+    for (int i = 0; i < canvas->length; i++) {
+        Path path = canvas->paths[i];
+
+        memcpy(buffer + o, &path.length, sizeof(int));
+        o += sizeof(int);
+
+        memcpy(buffer + o, path.points, sizeof(Point) * path.length);
+        o += sizeof(Point) * path.length;
+    }
+
+    FILE *f = fopen(filename, "w");
+
+    if (f == NULL) {
+        free(buffer);
+        fprintf(stderr, "error opening file: %s\n", filename);
+        return;
+    }
+
+    fwrite(buffer, buffer_size, 1, f);
+    fclose(f);
+    free(buffer);
+}
+
+#define NEW_CANVAS                                                             \
+    (Canvas) { malloc(sizeof(Path) * 4), 4, 0, 0, }
+
+#define FREAD(ptr, size, count, f)                                             \
+    if (fread(ptr, size, count, f) != (unsigned long)count) {                  \
+        fprintf(stderr, "error reading file\n");                               \
+        return NEW_CANVAS;                                                     \
+    }
+
+#define FREAD_TO(type, varname, f)                                             \
+    type *varname = malloc(sizeof(type));                                      \
+    FREAD(varname, sizeof(type), 1, f);
+
+Canvas canvas_open(char *filename) {
+    Canvas canvas = {0};
+
+    FILE *f = fopen(filename, "r");
+
+    if (f == NULL) {
+        return NEW_CANVAS;
+    }
+
+    FREAD_TO(char, version, f);
+
+    if (*version != SER_VERSION) {
+        return NEW_CANVAS;
+    }
+
+    FREAD_TO(int, canvas_length, f);
+
+    canvas.paths = malloc(sizeof(Path) * *canvas_length);
+    canvas.capacity = *canvas_length;
+
+    for (int i = 0; i < canvas.capacity; i++) {
+        FREAD_TO(int, path_length, f);
+
+        Path path = {
+            malloc(sizeof(Point) * *path_length),
+            *path_length,
+            (Bounds){0, 0, 0, 0},
+        };
+
+        FREAD(path.points, sizeof(Point), path.length, f);
+
+        for (int i = 0; i < path.length; i++) {
+            Point point = path.points[i];
+
+            if (point.x < path.bounds.l) {
+                path.bounds.l = point.x;
+            }
+            if (point.x > path.bounds.r) {
+                path.bounds.r = point.x;
+            }
+            if (point.y < path.bounds.t) {
+                path.bounds.t = point.y;
+            }
+            if (point.y > path.bounds.b) {
+                path.bounds.b = point.y;
+            }
+        }
+
+        canvas.paths[canvas.length] = path;
+        canvas.length++;
+        canvas.point_count += path.length;
+    }
+
+    fclose(f);
+    return canvas;
 }
 
 const float INPUT_RATE = 1.f / 30.f;
@@ -349,6 +474,7 @@ typedef struct State {
     bool is_dragging_released;
     bool history_back;
     bool history_forward;
+    bool save_file;
 } State;
 
 int main(int argc, char *argv[]) {
@@ -356,12 +482,7 @@ int main(int argc, char *argv[]) {
 
     config_load(argc, argv);
 
-    Canvas canvas = {
-        malloc(sizeof(Path) * 4),
-        4,
-        0,
-        0,
-    };
+    Canvas canvas = canvas_open(".canvas");
 
     Canvas clipboard = {
         malloc(sizeof(Path) * 4),
@@ -399,6 +520,7 @@ int main(int argc, char *argv[]) {
         state.history_forward = IsKeyPressed(KEY_Z) &&
                                 IsKeyDown(KEY_LEFT_CONTROL) &&
                                 IsKeyDown(KEY_LEFT_SHIFT);
+        state.save_file = IsKeyPressed(KEY_S) && IsKeyDown(KEY_LEFT_CONTROL);
 
         if (state.is_input_frame) {
             state.input_time = 0;
@@ -440,6 +562,10 @@ int main(int argc, char *argv[]) {
             canvas_move_last(&canvas, &clipboard);
         } else if (state.history_forward) {
             canvas_move_last(&clipboard, &canvas);
+        }
+
+        if (state.save_file) {
+            canvas_save(&canvas, ".canvas");
         }
 
         // RENDER
