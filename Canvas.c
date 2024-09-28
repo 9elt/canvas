@@ -36,6 +36,99 @@ typedef struct Path {
     Bounds bounds;
 } Path;
 
+#define SPLINE_SEGMENT_DIVISIONS 16 // Spline segments subdivisions
+
+void DrawPathSplineBasis(Path path, Point position, float thick, Color color) {
+    if (path.length < 4) {
+        return;
+    }
+
+    float a[4] = {0};
+    float b[4] = {0};
+    float dy = 0.0f;
+    float dx = 0.0f;
+    float size = 0.0f;
+
+    Vector2 currentPoint = {0};
+    Vector2 nextPoint = {0};
+    Vector2 vertices[2 * SPLINE_SEGMENT_DIVISIONS + 2] = {0};
+
+    for (int i = 0; i < (path.length - 3); i++) {
+        float t = 0.0f;
+
+        Vector2 p1 = (Vector2){
+            path.points[i].x + position.x,
+            path.points[i].y + position.y,
+        };
+        Vector2 p2 = (Vector2){
+            path.points[i + 1].x + position.x,
+            path.points[i + 1].y + position.y,
+        };
+        Vector2 p3 = (Vector2){
+            path.points[i + 2].x + position.x,
+            path.points[i + 2].y + position.y,
+        };
+        Vector2 p4 = (Vector2){
+            path.points[i + 3].x + position.x,
+            path.points[i + 3].y + position.y,
+        };
+
+        a[0] = (-p1.x + 3.0f * p2.x - 3.0f * p3.x + p4.x) / 6.0f;
+        a[1] = (3.0f * p1.x - 6.0f * p2.x + 3.0f * p3.x) / 6.0f;
+        a[2] = (-3.0f * p1.x + 3.0f * p3.x) / 6.0f;
+        a[3] = (p1.x + 4.0f * p2.x + p3.x) / 6.0f;
+
+        b[0] = (-p1.y + 3.0f * p2.y - 3.0f * p3.y + p4.y) / 6.0f;
+        b[1] = (3.0f * p1.y - 6.0f * p2.y + 3.0f * p3.y) / 6.0f;
+        b[2] = (-3.0f * p1.y + 3.0f * p3.y) / 6.0f;
+        b[3] = (p1.y + 4.0f * p2.y + p3.y) / 6.0f;
+
+        currentPoint.x = a[3];
+        currentPoint.y = b[3];
+
+        if (i == 0) {
+            DrawCircleV(currentPoint, thick / 2.0f,
+                        color); // Draw init line circle-cap
+        }
+
+        if (i > 0) {
+            vertices[0].x = currentPoint.x + dy * size;
+            vertices[0].y = currentPoint.y - dx * size;
+            vertices[1].x = currentPoint.x - dy * size;
+            vertices[1].y = currentPoint.y + dx * size;
+        }
+
+        for (int j = 1; j <= SPLINE_SEGMENT_DIVISIONS; j++) {
+            t = ((float)j) / ((float)SPLINE_SEGMENT_DIVISIONS);
+
+            nextPoint.x = a[3] + t * (a[2] + t * (a[1] + t * a[0]));
+            nextPoint.y = b[3] + t * (b[2] + t * (b[1] + t * b[0]));
+
+            dy = nextPoint.y - currentPoint.y;
+            dx = nextPoint.x - currentPoint.x;
+            size = 0.5f * thick / sqrtf(dx * dx + dy * dy);
+
+            if ((i == 0) && (j == 1)) {
+                vertices[0].x = currentPoint.x + dy * size;
+                vertices[0].y = currentPoint.y - dx * size;
+                vertices[1].x = currentPoint.x - dy * size;
+                vertices[1].y = currentPoint.y + dx * size;
+            }
+
+            vertices[2 * j + 1].x = nextPoint.x - dy * size;
+            vertices[2 * j + 1].y = nextPoint.y + dx * size;
+            vertices[2 * j].x = nextPoint.x + dy * size;
+            vertices[2 * j].y = nextPoint.y - dx * size;
+
+            currentPoint = nextPoint;
+        }
+
+        DrawTriangleStrip(vertices, 2 * SPLINE_SEGMENT_DIVISIONS + 2, color);
+    }
+
+    DrawCircleV(currentPoint, thick / 2.0f, color); // Draw end line circle-cap
+}
+
 void DrawPath(Path path, Point position, Bounds screen_bounds) {
     Bounds path_bounds = (Bounds){
         path.bounds.l + position.x,
@@ -46,19 +139,9 @@ void DrawPath(Path path, Point position, Bounds screen_bounds) {
 
     if (bounds_intersect(path_bounds, screen_bounds)) {
 #ifdef DEBUG
-        DrawBounds(path_bounds, BLACK);
+        DrawBounds(path_bounds, LIGHTGRAY);
 #endif
-
-        Vector2 points[path.length];
-
-        for (int i = 0; i < path.length; i++) {
-            points[i] = (Vector2){
-                path.points[i].x + position.x,
-                path.points[i].y + position.y,
-            };
-        }
-
-        DrawSplineBasis(points, path.length, 1.25, BLACK);
+        DrawPathSplineBasis(path, position, 1.25, BLACK);
     }
 }
 
