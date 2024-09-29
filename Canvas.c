@@ -392,6 +392,7 @@ void canvas_save(Canvas *canvas, char *filename) {
 #define FREAD(ptr, size, count, f)                                             \
     if (fread(ptr, size, count, f) != (unsigned long)count) {                  \
         fprintf(stderr, "error reading file\n");                               \
+        fclose(f);                                                             \
         return NEW_CANVAS;                                                     \
     }
 
