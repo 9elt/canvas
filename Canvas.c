@@ -426,10 +426,13 @@ Canvas canvas_open(char *filename) {
         Path path = {
             malloc(sizeof(Point) * *path_length),
             *path_length,
-            (Bounds){0, 0, 0, 0},
+            {0},
         };
 
         FREAD(path.points, sizeof(Point), path.length, f);
+
+        path.bounds = (Bounds){path.points[0].x, path.points[0].y,
+                               path.points[0].x, path.points[0].y};
 
         for (int i = 0; i < path.length; i++) {
             Point point = path.points[i];
