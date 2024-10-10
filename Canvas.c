@@ -67,6 +67,21 @@ bool bounds_intersect(Bounds a, Bounds b) {
     return a.l < b.r && a.r > b.l && a.t < b.b && a.b > b.t;
 }
 
+void bounds_move(Bounds *bounds, Point point) {
+    if (point.x < bounds->l) {
+        bounds->l = point.x;
+    }
+    if (point.x > bounds->r) {
+        bounds->r = point.x;
+    }
+    if (point.y < bounds->t) {
+        bounds->t = point.y;
+    }
+    if (point.y > bounds->b) {
+        bounds->b = point.y;
+    }
+}
+
 void DrawBounds(Bounds bounds, Color color) {
     DrawLine(bounds.l, bounds.t, bounds.r, bounds.t, color);
     DrawLine(bounds.r, bounds.t, bounds.r, bounds.b, color);
@@ -215,21 +230,6 @@ void current_path_push(CurrentPath *curr_path, Point point) {
     curr_path->length++;
 }
 
-void move_bounds(Point point, Bounds *bounds) {
-    if (point.x < bounds->l) {
-        bounds->l = point.x;
-    }
-    if (point.x > bounds->r) {
-        bounds->r = point.x;
-    }
-    if (point.y < bounds->t) {
-        bounds->t = point.y;
-    }
-    if (point.y > bounds->b) {
-        bounds->b = point.y;
-    }
-}
-
 Path current_path_finalize(CurrentPath *curr_path) {
     Point points[curr_path->length];
     int length = curr_path->length;
@@ -238,7 +238,7 @@ Path current_path_finalize(CurrentPath *curr_path) {
 
     for (int i = 0; i < curr_path->length; i++) {
         points[i] = curr_path->points[i];
-        move_bounds(points[i], &bounds);
+        bounds_move(&bounds, points[i]);
     }
 
     Path path = {
@@ -439,7 +439,7 @@ Canvas canvas_open(char *filename) {
                                path.points[0].x, path.points[0].y};
 
         for (int i = 0; i < path.length; i++) {
-            move_bounds(path.points[i], &path.bounds);
+            bounds_move(&path.bounds, path.points[i]);
         }
 
         canvas.paths[canvas.length] = path;
