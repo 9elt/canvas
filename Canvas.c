@@ -95,7 +95,7 @@ typedef struct Path {
     Bounds bounds;
 } Path;
 
-#define SPLINE_SEGMENT_DIVISIONS 16 // Spline segments subdivisions
+#define SPLINE_SEGMENT_DIVISIONS 16
 
 void DrawPathSplineBasis(Path path, Point position, float thick, Color color) {
     if (path.length < 4) {
@@ -146,8 +146,7 @@ void DrawPathSplineBasis(Path path, Point position, float thick, Color color) {
         currentPoint.y = b[3];
 
         if (i == 0) {
-            DrawCircleV(currentPoint, thick / 2.0f,
-                        color); // Draw init line circle-cap
+            DrawCircleV(currentPoint, thick / 2.0f, color);
         }
 
         if (i > 0) {
@@ -185,7 +184,7 @@ void DrawPathSplineBasis(Path path, Point position, float thick, Color color) {
         DrawTriangleStrip(vertices, 2 * SPLINE_SEGMENT_DIVISIONS + 2, color);
     }
 
-    DrawCircleV(currentPoint, thick / 2.0f, color); // Draw end line circle-cap
+    DrawCircleV(currentPoint, thick / 2.0f, color);
 }
 
 void DrawPath(Path path, Point position, Bounds screen_bounds) {
